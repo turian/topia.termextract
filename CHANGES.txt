@@ -1,0 +1,19 @@
+=======
+CHANGES
+=======
+
+1.1.0 (2009-06-29)
+------------------
+
+- Improved the dictionary a little bit to improve real scenarios.
+
+
+1.0.0 (2009-05-30)
+------------------
+
+- Initial Release
+
+  * Part-Of-Speech Text Tagging using existing lexicon ans very simplisitc
+    linguistic rules.
+
+  * Term Extraction based on occurances and term strength.

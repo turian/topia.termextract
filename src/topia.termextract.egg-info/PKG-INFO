@@ -1,0 +1,969 @@
+Metadata-Version: 1.0
+Name: topia.termextract
+Version: 1.1.0
+Summary: Content Term Extraction using POS Tagging
+Home-page: http://pypi.python.org/pypi/topia.termextract
+Author: Stephan Richter, Russ Ferriday and the Zope Community
+Author-email: zope3-dev@zope.org
+License: ZPL 2.1
+Description: This package determines important terms within a given piece of content. It
+        uses linguistic tools such as Parts-Of-Speech (POS) and some simple
+        statistical analysis to determine the terms and their strength.
+        
+        
+        Detailed Documentation
+        **********************
+        
+        ===============
+        Term Extraction
+        ===============
+        
+        This package implements text term extraction by making use of a simple
+        Parts-Of-Speech (POS) tagging algorithm.
+        
+        http://bioie.ldc.upenn.edu/wiki/index.php/Part-of-Speech
+        
+        
+        The POS Tagger
+        --------------
+        
+        POS Taggers use a lexicon to mark words with a tag. A list of available tags
+        can be found at:
+        
+        http://bioie.ldc.upenn.edu/wiki/index.php/POS_tags
+        
+        Since words can have multiple tags, the determination of the correct tag is
+        not always simple. This implementation, however, does not try to infer
+        linguistic use and simply chooses the first tag in the lexicon.
+        
+        >>> from topia.termextract import tag
+        >>> tagger = tag.Tagger()
+        >>> tagger
+        <Tagger for english>
+        
+        To get the tagger ready for its work, we need to initialize it. In this
+        implementation the lexicon is loaded.
+        
+        >>> tagger.initialize()
+        
+        Now we are ready to rock and roll.
+        
+        Tokenizing
+        ~~~~~~~~~~
+        
+        The first step of tagging is to tokenize the text into terms.
+        
+        >>> tagger.tokenize('This is a simple example.')
+        ['This', 'is', 'a', 'simple', 'example', '.']
+        
+        While most tokenizers ignore punctuation, it is important for us to keep it,
+        since we need it later for the term extraction. Let's now look at some more
+        complex cases:
+        
+        - Quoted Text
+        
+        >>> tagger.tokenize('This is a "simple" example.')
+        ['This', 'is', 'a', '"', 'simple', '"', 'example', '.']
+        
+        >>> tagger.tokenize('"This is a simple example."')
+        ['"', 'This', 'is', 'a', 'simple', 'example', '."']
+        
+        - Non-letters within words.
+        
+        >>> tagger.tokenize('Parts-Of-Speech')
+        ['Parts-Of-Speech']
+        
+        >>> tagger.tokenize('amazon.com')
+        ['amazon.com']
+        
+        >>> tagger.tokenize('Go to amazon.com.')
+        ['Go', 'to', 'amazon.com', '.']
+        
+        - Various punctuation.
+        
+        >>> tagger.tokenize('Quick, go to amazon.com.')
+        ['Quick', ',', 'go', 'to', 'amazon.com', '.']
+        
+        >>> tagger.tokenize('Live free; or die?')
+        ['Live', 'free', ';', 'or', 'die', '?']
+        
+        - Tolerance to incorrect punctuation.
+        
+        >>> tagger.tokenize('Hi , I am here.')
+        ['Hi', ',', 'I', 'am', 'here', '.']
+        
+        - Possessive structures.
+        
+        >>> tagger.tokenize("my parents' car")
+        ['my', 'parents', "'", 'car']
+        >>> tagger.tokenize("my father's car")
+        ['my', 'father', "'s", 'car']
+        
+        - Numbers.
+        
+        >>> tagger.tokenize("12.4")
+        ['12.4']
+        >>> tagger.tokenize("-12.4")
+        ['-12.4']
+        >>> tagger.tokenize("$12.40")
+        ['$12.40']
+        
+        - Dates.
+        
+        >>> tagger.tokenize("10/3/2009")
+        ['10/3/2009']
+        >>> tagger.tokenize("3.10.2009")
+        ['3.10.2009']
+        
+        Okay, that's it.
+        
+        
+        Tagging
+        -------
+        
+        The next step is tagging. Tagging is done in two phases. During the first
+        phase terms are assigned a tag by looking at the lexicon and the normalized
+        form is set to the term itself. In the second phase, a set of rules is applied
+        to each tagged term and the tagging and normalization is tweaked.
+        
+        >>> tagger('This is a simple example.')
+        [['This', 'DT', 'This'],
+        ['is', 'VBZ', 'is'],
+        ['a', 'DT', 'a'],
+        ['simple', 'JJ', 'simple'],
+        ['example', 'NN', 'example'],
+        ['.', '.', '.']]
+        
+        So wow, this determination was dead on. Let's try a plural form noun and see
+        what happens:
+        
+        >>> tagger('These are simple examples.')
+        [['These', 'DT', 'These'],
+        ['are', 'VBP', 'are'],
+        ['simple', 'JJ', 'simple'],
+        ['examples', 'NNS', 'example'],
+        ['.', '.', '.']]
+        
+        So far so good. Let's test a few more cases:
+        
+        >>> tagger("The fox's tail is red.")
+        [['The', 'DT', 'The'],
+        ['fox', 'NN', 'fox'],
+        ["'s", 'POS', "'s"],
+        ['tail', 'NN', 'tail'],
+        ['is', 'VBZ', 'is'],
+        ['red', 'JJ', 'red'],
+        ['.', '.', '.']]
+        
+        >>> tagger("The fox can't really jump over the fox's tail.")
+        [['The', 'DT', 'The'],
+        ['fox', 'NN', 'fox'],
+        ['can', 'MD', 'can'],
+        ["'t", 'RB', "'t"],
+        ['really', 'RB', 'really'],
+        ['jump', 'VB', 'jump'],
+        ['over', 'IN', 'over'],
+        ['the', 'DT', 'the'],
+        ['fox', 'NN', 'fox'],
+        ["'s", 'POS', "'s"],
+        ['tail', 'NN', 'tail'],
+        ['.', '.', '.']]
+        
+        Rules
+        ~~~~~
+        
+        - Correct Default Noun Tag
+        
+        >>> tagger('Ikea')
+        [['Ikea', 'NN', 'Ikea']]
+        >>> tagger('Ikeas')
+        [['Ikeas', 'NNS', 'Ikea']]
+        
+        - Verify proper nouns at beginning of sentence.
+        
+        >>> tagger('. Police')
+        [['.', '.', '.'], ['police', 'NN', 'police']]
+        >>> tagger('Police')
+        [['police', 'NN', 'police']]
+        >>> tagger('. Stephan')
+        [['.', '.', '.'], ['Stephan', 'NNP', 'Stephan']]
+        
+        - Determine Verb after Modal Verb
+        
+        >>> tagger('The fox can jump')
+        [['The', 'DT', 'The'],
+        ['fox', 'NN', 'fox'],
+        ['can', 'MD', 'can'],
+        ['jump', 'VB', 'jump']]
+        >>> tagger("The fox can't jump")
+        [['The', 'DT', 'The'],
+        ['fox', 'NN', 'fox'],
+        ['can', 'MD', 'can'],
+        ["'t", 'RB', "'t"],
+        ['jump', 'VB', 'jump']]
+        >>> tagger('The fox can really jump')
+        [['The', 'DT', 'The'],
+        ['fox', 'NN', 'fox'],
+        ['can', 'MD', 'can'],
+        ['really', 'RB', 'really'],
+        ['jump', 'VB', 'jump']]
+        
+        - Normalize Plural Forms
+        
+        >>> tagger('examples')
+        [['examples', 'NNS', 'example']]
+        >>> tagger('stresses')
+        [['stresses', 'NNS', 'stress']]
+        >>> tagger('cherries')
+        [['cherries', 'NNS', 'cherry']]
+        
+        Some cases that do not work:
+        
+        >>> tagger('men')
+        [['men', 'NNS', 'men']]
+        >>> tagger('feet')
+        [['feet', 'NNS', 'feet']]
+        
+        
+        Term Extraction
+        ---------------
+        
+        Now that we can tag a text, let's have a look at the term extractions.
+        
+        >>> from topia.termextract import extract
+        >>> extractor = extract.TermExtractor()
+        >>> extractor
+        <TermExtractor using <Tagger for english>>
+        
+        As you can see, the extractor maintains a tagger:
+        
+        >>> extractor.tagger
+        <Tagger for english>
+        
+        When creating an extractor, you can also pass in a tagger to avoid frequent
+        tagger initialization:
+        
+        >>> extractor = extract.TermExtractor(tagger)
+        >>> extractor.tagger is tagger
+        True
+        
+        Let's get the terms for a simple text.
+        
+        >>> extractor("The fox can't jump over the fox's tail.")
+        []
+        
+        We got no terms. That's because by default at least 3 occurences of a
+        term must be detected, if the term consists of a single word.
+        
+        The extractor maintains a filter component. Let's register the trivial
+        permissive filter, which simply return everything that the extractor suggests:
+        
+        >>> extractor.filter = extract.permissiveFilter
+        >>> extractor("The fox can't jump over the fox's tail.")
+        [('tail', 1, 1), ('fox', 2, 1)]
+        
+        But let's look at the default filter again, since it allows tweaking its
+        parameters:
+        
+        >>> extractor.filter = extract.DefaultFilter(singleStrengthMinOccur=2)
+        >>> extractor("The fox can't jump over the fox's tail.")
+        [('fox', 2, 1)]
+        
+        Let's now have a look at multi-word terms. Oftentimes multi-word nouns and
+        proper names occur only once or twice in a text. But they are often great
+        terms! To handle this scenario, the concept of "strength" was
+        introduced. Currently the strength is simply the amount of words in the
+        term. By default, all terms with a strength larger than 1 are selected
+        regardless of the number of occurances.
+        
+        >>> extractor('The German consul of Boston resides in Newton.')
+        [('German consul', 1, 2)]
+        
+        
+        
+        ===========================
+        An Exmaple - A News Article
+        ===========================
+        
+        This document provides a simple example of extracting the terms of a BBC
+        article from May 29, 2009. We will use several term extraction tools to
+        compare the outcome.
+        
+        >>> text ='''
+        ... Police shut Palestinian theatre in Jerusalem.
+        ...
+        ... Israeli police have shut down a Palestinian theatre in East Jerusalem.
+        ...
+        ... The action, on Thursday, prevented the closing event of an international
+        ... literature festival from taking place.
+        ...
+        ... Police said they were acting on a court order, issued after intelligence
+        ... indicated that the Palestinian Authority was involved in the event.
+        ...
+        ... Israel has occupied East Jerusalem since 1967 and has annexed the
+        ... area. This is not recognised by the international community.
+        ...
+        ... The British consul-general in Jerusalem , Richard Makepeace, was
+        ... attending the event.
+        ...
+        ... "I think all lovers of literature would regard this as a very
+        ... regrettable moment and regrettable decision," he added.
+        ...
+        ... Mr Makepeace said the festival's closing event would be reorganised to
+        ... take place at the British Council in Jerusalem.
+        ...
+        ... The Israeli authorities often take action against events in East
+        ... Jerusalem they see as connected to the Palestinian Authority.
+        ...
+        ... Saturday's opening event at the same theatre was also shut down.
+        ...
+        ... A police notice said the closure was on the orders of Israel's internal
+        ... security minister on the grounds of a breach of interim peace accords
+        ... from the 1990s.
+        ...
+        ... These laid the framework for talks on establishing a Palestinian state
+        ... alongside Israel, but left the status of Jerusalem to be determined by
+        ... further negotiation.
+        ...
+        ... Israel has annexed East Jerusalem and declares it part of its eternal
+        ... capital.
+        ...
+        ... Palestinians hope to establish their capital in the area.
+        ... '''
+        
+        
+        Yahoo Keyword Extractor
+        -----------------------
+        
+        Yahoo provides a service that extracts terms from a piece of content using
+        its immense search database.
+        
+        http://developer.yahoo.com/search/content/V1/termExtraction.html
+        
+        As you can see, the result is excellent::
+        
+        <ResultSet>
+        <Result>british consul general</Result>
+        <Result>east jerusalem</Result>
+        <Result>literature festival</Result>
+        <Result>richard makepeace</Result>
+        <Result>international literature</Result>
+        <Result>israeli authorities</Result>
+        <Result>eternal capital</Result>
+        <Result>peace accords</Result>
+        <Result>security minister</Result>
+        <Result>israeli police</Result>
+        <Result>internal security</Result>
+        <Result>palestinian state</Result>
+        <Result>palestinian authority</Result>
+        <Result>british council</Result>
+        <Result>palestinians</Result>
+        <Result>negotiation</Result>
+        <Result>breach</Result>
+        <Result>1990s</Result>
+        <Result>closure</Result>
+        <Result>israel</Result>
+        </ResultSet>
+        
+        Unfortunately, the service allows only 5000 requests per 24 hours. Also, there
+        is no strength indicator on the terms.
+        
+        
+        TreeTagger
+        ----------
+        
+        A POS tagger that uses some linguistics to tag a text. Here is its output::
+        
+        Police          NNS       Police
+        shut            VVD       shut
+        Palestinian     JJ        Palestinian
+        theatre         NN        theatre
+        in              IN        in
+        Jerusalem       NP        Jerusalem
+        .               SENT      .
+        Israeli         JJ        Israeli
+        police          NNS       police
+        have            VHP       have
+        shut            VVN       shut
+        down            RP        down
+        a               DT        a
+        Palestinian     JJ        Palestinian
+        theatre         NN        theatre
+        in              IN        in
+        East            NP        East
+        Jerusalem       NP        Jerusalem
+        .               SENT      .
+        The             DT        the
+        action          NN        action
+        ,               ,         ,
+        on              IN        on
+        Thursday        NP        Thursday
+        ,               ,         ,
+        prevented       VVD       prevent
+        the             DT        the
+        closing         NN        closing
+        event           NN        event
+        of              IN        of
+        an              DT        an
+        international   JJ        international
+        literature      NN        literature
+        festival        NN        festival
+        from            IN        from
+        taking          VVG       take
+        place           NN        place
+        .               SENT      .
+        Police          NNS       Police
+        said            VVD       say
+        they            PP        they
+        were            VBD       be
+        acting          VVG       act
+        on              IN        on
+        a               DT        a
+        court           NN        court
+        order           NN        order
+        ,               ,         ,
+        issued          VVN       issue
+        after           IN        after
+        intelligence    NN        intelligence
+        indicated       VVN       indicate
+        that            IN        that
+        the             DT        the
+        Palestinian     NP        Palestinian
+        Authority       NP        Authority
+        was             VBD       be
+        involved        VVN       involve
+        in              IN        in
+        the             DT        the
+        event           NN        event
+        .               SENT      .
+        Israel          NP        Israel
+        has             VHZ       have
+        occupied        VVN       occupy
+        East            NP        East
+        Jerusalem       NP        Jerusalem
+        since           IN        since
+        1967            CD        @card@
+        and             CC        and
+        has             VHZ       have
+        annexed         VVN       annex
+        the             DT        the
+        area            NN        area
+        .               SENT      .
+        This            DT        this
+        is              VBZ       be
+        not             RB        not
+        recognised      VVN       recognise
+        by              IN        by
+        the             DT        the
+        international   JJ        international
+        community       NN        community
+        .               SENT      .
+        The             DT        the
+        British         JJ        British
+        consul-general  NN        <unknown>
+        in              IN        in
+        Jerusalem       NP        Jerusalem
+        ,               ,         ,
+        Richard         NP        Richard
+        Makepeace       NP        Makepeace
+        ,               ,         ,
+        was             VBD       be
+        attending       VVG       attend
+        the             DT        the
+        event           NN        event
+        .               SENT      .
+        "               ``        "
+        I               PP        I
+        think           VVP       think
+        all             DT        all
+        lovers          NNS       lover
+        of              IN        of
+        literature      NN        literature
+        would           MD        would
+        regard          VV        regard
+        this            DT        this
+        as              IN        as
+        a               DT        a
+        very            RB        very
+        regrettable     JJ        regrettable
+        moment          NN        moment
+        and             CC        and
+        regrettable     JJ        regrettable
+        decision        NN        decision
+        ,               ,         ,
+        "               ''        "
+        he              PP        he
+        added           VVD       add
+        .               SENT      .
+        Mr              NP        Mr
+        Makepeace       NP        Makepeace
+        said            VVD       say
+        the             DT        the
+        festival        NN        festival
+        's              POS       's
+        closing         NN        closing
+        event           NN        event
+        would           MD        would
+        be              VB        be
+        reorganised     VVN       <unknown>
+        to              TO        to
+        take            VV        take
+        place           NN        place
+        at              IN        at
+        the             DT        the
+        British         NP        British
+        Council         NP        Council
+        in              IN        in
+        Jerusalem       NP        Jerusalem
+        .               SENT      .
+        The             DT        the
+        Israeli         JJ        Israeli
+        authorities     NNS       authority
+        often           RB        often
+        take            VVP       take
+        action          NN        action
+        against         IN        against
+        events          NNS       event
+        in              IN        in
+        East            NP        East
+        Jerusalem       NP        Jerusalem
+        they            PP        they
+        see             VVP       see
+        as              RB        as
+        connected       VVN       connect
+        to              TO        to
+        the             DT        the
+        Palestinian     JJ        Palestinian
+        Authority       NP        Authority
+        .               SENT      .
+        Saturday        NP        Saturday
+        's              POS       's
+        opening         NN        opening
+        event           NN        event
+        at              IN        at
+        the             DT        the
+        same            JJ        same
+        theatre         NN        theatre
+        was             VBD       be
+        also            RB        also
+        shut            VVN       shut
+        down            RP        down
+        .               SENT      .
+        A               DT        a
+        police          NN        police
+        notice          NN        notice
+        said            VVD       say
+        the             DT        the
+        closure         NN        closure
+        was             VBD       be
+        on              IN        on
+        the             DT        the
+        orders          NNS       order
+        of              IN        of
+        Israel          NP        Israel
+        's              POS       's
+        internal        JJ        internal
+        security        NN        security
+        minister        NN        minister
+        on              IN        on
+        the             DT        the
+        grounds         NNS       ground
+        of              IN        of
+        a               DT        a
+        breach          NN        breach
+        of              IN        of
+        interim         JJ        interim
+        peace           NN        peace
+        accords         NNS       accord
+        from            IN        from
+        the             DT        the
+        1990s           NNS       1990s
+        .               SENT      .
+        These           DT        these
+        laid            VVD       lay
+        the             DT        the
+        framework       NN        framework
+        for             IN        for
+        talks           NNS       talk
+        on              IN        on
+        establishing    VVG       establish
+        a               DT        a
+        Palestinian     JJ        Palestinian
+        state NN        state
+        alongside       IN        alongside
+        Israel          NP        Israel
+        ,               ,         ,
+        but             CC        but
+        left            VVD       leave
+        the             DT        the
+        status          NN        status
+        of              IN        of
+        Jerusalem       NP        Jerusalem
+        to              TO        to
+        be              VB        be
+        determined      VVN       determine
+        by              IN        by
+        further         JJR       further
+        negotiation     NN        negotiation
+        .               SENT      .
+        Israel          NP        Israel
+        has             VHZ       have
+        annexed         VVN       annex
+        East            NP        East
+        Jerusalem       NP        Jerusalem
+        and             CC        and
+        declares        VVZ       declare
+        it              PP        it
+        part            NN        part
+        of              IN        of
+        its             PP$       its
+        eternal         JJ        eternal
+        capital         NN        capital
+        .               SENT      .
+        Palestinians    NPS       Palestinians
+        hope            VVP       hope
+        to              TO        to
+        establish       VV        establish
+        their           PP$       their
+        capital         NN        capital
+        in              IN        in
+        the             DT        the
+        area            NN        area
+        .               SENT      .
+        
+        As you can see, the identification of TreeTagger is pretty good, but the
+        output would need some analysis to produce a useful set of terms. Furthermore,
+        TreeTagger is not free for commercial use.
+        
+        Topia's Term Extractor
+        ----------------------
+        
+        Topia's Term Extractor tries to produce results somewhere between a POS
+        tagger like TreeTagger and Yahoo Keyword Extraction.
+        
+        Since we are only interested in nouns, a very simple POS tagging algorithm can
+        be deployed, which will provide good results most of the time. We then use
+        some simple statistics and linguistics to produce a narrow but strong list of
+        terms for the content.
+        
+        >>> from topia.termextract import extract
+        >>> extractor = extract.TermExtractor()
+        
+        Let's look at the result of the tagger first:
+        
+        >>> printTaggedTerms(extractor.tagger(text)) #doctest: +REPORT_NDIFF
+        police          NN    police
+        shut            VBN   shut
+        Palestinian     JJ    Palestinian
+        theatre         NN    theatre
+        in              IN    in
+        Jerusalem       NNP   Jerusalem
+        .               .     .
+        Israeli         JJ    Israeli
+        police          NN    police
+        have            VBP   have
+        shut            VBN   shut
+        down            RB    down
+        a               DT    a
+        Palestinian     JJ    Palestinian
+        theatre         NN    theatre
+        in              IN    in
+        East            NNP   East
+        Jerusalem       NNP   Jerusalem
+        .               .     .
+        The             DT    The
+        action          NN    action
+        ,               ,     ,
+        on              IN    on
+        Thursday        NNP   Thursday
+        ,               ,     ,
+        prevented       VBN   prevented
+        the             DT    the
+        closing         VBG   closing
+        event           NN    event
+        of              IN    of
+        an              DT    an
+        international   JJ    international
+        literature      NN    literature
+        festival        NN    festival
+        from            IN    from
+        taking          VBG   taking
+        place           NN    place
+        .               .     .
+        police          NN    police
+        said            VBD   said
+        they            PRP   they
+        were            VBD   were
+        acting          VBG   acting
+        on              IN    on
+        a               DT    a
+        court           NN    court
+        order           NN    order
+        ,               ,     ,
+        issued          VBN   issued
+        after           IN    after
+        intelligence    NN    intelligence
+        indicated       VBD   indicated
+        that            IN    that
+        the             DT    the
+        Palestinian     JJ    Palestinian
+        Authority       NNP   Authority
+        was             VBD   was
+        involved        VBN   involved
+        in              IN    in
+        the             DT    the
+        event           NN    event
+        .               .     .
+        Israel          NNP   Israel
+        has             VBZ   has
+        occupied        VBN   occupied
+        East            NNP   East
+        Jerusalem       NNP   Jerusalem
+        since           IN    since
+        1967            NN    1967
+        and             CC    and
+        has             VBZ   has
+        annexed         VBD   annexed
+        the             DT    the
+        area            NN    area
+        .               .     .
+        This            DT    This
+        is              VBZ   is
+        not             RB    not
+        recognised      VBD   recognised
+        by              IN    by
+        the             DT    the
+        international   JJ    international
+        community       NN    community
+        .               .     .
+        The             DT    The
+        British         JJ    British
+        consul-general  NN    consul-general
+        in              IN    in
+        Jerusalem       NNP   Jerusalem
+        ,               ,     ,
+        Richard         NNP   Richard
+        Makepeace       NNP   Makepeace
+        ,               ,     ,
+        was             VBD   was
+        attending       VBG   attending
+        the             DT    the
+        event           NN    event
+        .               .     .
+        "               "     "
+        I               PRP   I
+        think           VBP   think
+        all             DT    all
+        lovers          NNS   lover
+        of              IN    of
+        literature      NN    literature
+        would           MD    would
+        regard          VB    regard
+        this            DT    this
+        as              IN    as
+        a               DT    a
+        very            RB    very
+        regrettable     JJ    regrettable
+        moment          NN    moment
+        and             CC    and
+        regrettable     JJ    regrettable
+        decision        NN    decision
+        ,"              ,     ,"
+        he              PRP   he
+        added           VBD   added
+        .               .     .
+        Mr              NNP   Mr
+        Makepeace       NNP   Makepeace
+        said            VBD   said
+        the             DT    the
+        festival        NN    festival
+        's              POS   's
+        closing         VBG   closing
+        event           NN    event
+        would           MD    would
+        be              VB    be
+        reorganised     NN    reorganised
+        to              TO    to
+        take            VB    take
+        place           NN    place
+        at              IN    at
+        the             DT    the
+        British         JJ    British
+        Council         NNP   Council
+        in              IN    in
+        Jerusalem       NNP   Jerusalem
+        .               .     .
+        The             DT    The
+        Israeli         JJ    Israeli
+        authorities     NNS   authority
+        often           RB    often
+        take            VB    take
+        action          NN    action
+        against         IN    against
+        events          NNS   event
+        in              IN    in
+        East            NNP   East
+        Jerusalem       NNP   Jerusalem
+        they            PRP   they
+        see             VB    see
+        as              IN    as
+        connected       VBN   connected
+        to              TO    to
+        the             DT    the
+        Palestinian     JJ    Palestinian
+        Authority       NNP   Authority
+        .               .     .
+        Saturday        NNP   Saturday
+        's              POS   's
+        opening         NN    opening
+        event           NN    event
+        at              IN    at
+        the             DT    the
+        same            JJ    same
+        theatre         NN    theatre
+        was             VBD   was
+        also            RB    also
+        shut            VBN   shut
+        down            RB    down
+        .               .     .
+        A               DT    A
+        police          NN    police
+        notice          NN    notice
+        said            VBD   said
+        the             DT    the
+        closure         NN    closure
+        was             VBD   was
+        on              IN    on
+        the             DT    the
+        orders          NNS   order
+        of              IN    of
+        Israel          NNP   Israel
+        's              POS   's
+        internal        JJ    internal
+        security        NN    security
+        minister        NN    minister
+        on              IN    on
+        the             DT    the
+        grounds         NNS   ground
+        of              IN    of
+        a               DT    a
+        breach          NN    breach
+        of              IN    of
+        interim         JJ    interim
+        peace           NN    peace
+        accords         NNS   accord
+        from            IN    from
+        the             DT    the
+        1990            NN    1990
+        s               PRP   s
+        .               .     .
+        These           DT    These
+        laid            VBN   laid
+        the             DT    the
+        framework       NN    framework
+        for             IN    for
+        talks           NNS   talk
+        on              IN    on
+        establishing    VBG   establishing
+        a               DT    a
+        Palestinian     JJ    Palestinian
+        state           NN    state
+        alongside       IN    alongside
+        Israel          NNP   Israel
+        ,               ,     ,
+        but             CC    but
+        left            VBN   left
+        the             DT    the
+        status          NN    status
+        of              IN    of
+        Jerusalem       NNP   Jerusalem
+        to              TO    to
+        be              VB    be
+        determined      VBN   determined
+        by              IN    by
+        further         JJ    further
+        negotiation     NN    negotiation
+        .               .     .
+        Israel          NNP   Israel
+        has             VBZ   has
+        annexed         VBD   annexed
+        East            NNP   East
+        Jerusalem       NNP   Jerusalem
+        and             CC    and
+        declares        VBZ   declares
+        it              PRP   it
+        part            NN    part
+        of              IN    of
+        its             PRP$  its
+        eternal         JJ    eternal
+        capital         NN    capital
+        .               .     .
+        Palestinians    NNPS  Palestinian
+        hope            NN    hope
+        to              TO    to
+        establish       VB    establish
+        their           PRP$  their
+        capital         NN    capital
+        in              IN    in
+        the             DT    the
+        area            NN    area
+        .               .     .
+        
+        Let's now apply the extractor.
+        
+        >>> sorted(extractor(text))
+        [('British Council', 1, 2),
+        ('British consul-general', 1, 2),
+        ('East', 4, 1),
+        ('East Jerusalem', 4, 2),
+        ('Israel', 4, 1),
+        ('Israeli authorities', 1, 2),
+        ('Israeli police', 1, 2),
+        ('Jerusalem', 8, 1),
+        ('Mr Makepeace', 1, 2),
+        ('Palestinian', 6, 1),
+        ('Palestinian Authority', 2, 2),
+        ('Palestinian state', 1, 2),
+        ('Palestinian theatre', 2, 2),
+        ('Palestinians hope', 1, 2),
+        ('Richard Makepeace', 1, 2),
+        ('court order', 1, 2),
+        ('event', 6, 1),
+        ('literature festival', 1, 2),
+        ('opening event', 1, 2),
+        ('peace accords', 1, 2),
+        ('police', 4, 1),
+        ('police notice', 1, 2),
+        ('security minister', 1, 2),
+        ('theatre', 3, 1)]
+        
+        
+        =======
+        CHANGES
+        =======
+        
+        1.1.0 (2009-06-29)
+        ------------------
+        
+        - Improved the dictionary a little bit to improve real scenarios.
+        
+        
+        1.0.0 (2009-05-30)
+        ------------------
+        
+        - Initial Release
+        
+        * Part-Of-Speech Text Tagging using existing lexicon ans very simplisitc
+        linguistic rules.
+        
+        * Term Extraction based on occurances and term strength.
+        
+Keywords: content term extract pos tagger linguistics
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Zope Public License
+Classifier: Programming Language :: Python
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
