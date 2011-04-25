@@ -3,3 +3,8 @@ uses linguistic tools such as Parts-Of-Speech (POS) and some simple
 statistical analysis to determine the terms and their strength.
 
 NOTE: This is a fork by Joseph Turian of topia.termextract 1.1.0
+CONTRIBUTIONS:
+    * Unicode alphabetic characters are tokenized correctly.
+    I changed TERM_SPEC in topic.termextract.tag:
+        Old = [u'S', u'\xe3o', u'Paulo', u'was', u'home', u'to']
+        New = [u'S\xe3o', u'Paulo', u'was', u'home', u'to']

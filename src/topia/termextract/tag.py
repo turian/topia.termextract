@@ -21,7 +21,11 @@ import zope.interface
 
 from topia.termextract import interfaces
 
-TERM_SPEC = re.compile('([^a-zA-Z]*)([a-zA-Z-\.]*[a-zA-Z])([^a-zA-Z]*[a-zA-Z]*)')
+#TERM_SPEC = re.compile('([^a-zA-Z]*)([a-zA-Z-\.]*[a-zA-Z])([^a-zA-Z]*[a-zA-Z]*)')
+# Modified by jpt
+# regex [^\W\d_] = [a-zA-Z] with Unicode alphabetic character.
+# See: http://stackoverflow.com/questions/2039140/python-re-how-do-i-match-an-alpha-character/2039476#2039476
+TERM_SPEC = re.compile('([\W\d_]*)(([^\W\d_]*[-\.]*)*[^\W\d_])([\W\d_]*[^\W\d_]*)', re.UNICODE)
 DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), 'data')
 
 
