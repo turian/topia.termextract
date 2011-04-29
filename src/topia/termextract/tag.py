@@ -16,7 +16,8 @@
 $Id: tag.py 100555 2009-05-30 15:26:12Z srichter $
 """
 import os
-import re
+#import re
+import re2 as re
 import zope.interface
 
 from topia.termextract import interfaces
@@ -158,7 +159,7 @@ class Tagger(object):
     def __repr__(self):
         return '<%s for %s>' %(self.__class__.__name__, self.language)
 
-#if __name__ == "__main__":
-#    t = u'Enter your email address:\n\nDelivered by FeedBurner\nLock On Flaming Cliffs 2 PC -SKIDROW is available on a new fast direct download service with over 2,210,000 Files to choose from.Download anything with more then 1000+ Kb/s downloading speed.Signup process takes just 10 sec to go.Signup today and enjoy the speed !\n--- Similar Software to (Lock On Flaming Cliffs 2 PC -SKIDROW): History Channel Battle For The PacificThe Scourge Project Episode 1 and 2 Update 2-SKIDROWStorm Over the Pacific v1.02 Update-SKIDROWTom Clancys Splinter Cell Conviction v1.03 Update-SKIDROWThe Witcher - Enhanced Edition ISO'
-#    tok = Tagger()
-#    tok.tokenize(t)
+if __name__ == "__main__":
+    t = u'Enter your email address:\n\nDelivered by FeedBurner\nLock On Flaming Cliffs 2 PC -SKIDROW is available on a new fast direct download service with over 2,210,000 Files to choose from.Download anything with more then 1000+ Kb/s downloading speed.Signup process takes just 10 sec to go.Signup today and enjoy the speed !\n-------------------- Similar Software to (Lock On Flaming Cliffs 2 PC -SKIDROW): History Channel Battle For The PacificThe Scourge Project Episode 1 and 2 Update 2-SKIDROWStorm Over the Pacific v1.02 Update-SKIDROWTom Clancys Splinter Cell Conviction v1.03 Update-SKIDROWThe Witcher - Enhanced Edition ISO'
+    tok = Tagger()
+    tok.tokenize(t)
