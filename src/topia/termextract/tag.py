@@ -21,6 +21,8 @@ import re2 as re        # You must use re2 or you might get killed by exponentia
                         # e.g. on '------------------------------'
                         # DOWNLOAD AT: https://github.com/axiak/pyre2
                         # (see Python bug http://bugs.python.org/issue1662581)
+re.set_fallback_notification(re.FALLBACK_WARNING)
+
 import zope.interface
 
 from topia.termextract import interfaces
@@ -122,13 +124,14 @@ class Tagger(object):
                 continue
             # Now, a word can be preceded or succeeded by symbols, so let's
             # split those out
-            # Modified by jpt
             match = TERM_SPEC.search(term)
             if match is None:
                 terms.append(term)
                 continue
             for subTerm in match.groups():
-                if subTerm != '':
+#                print match.groups()
+                # jpt: Added None check for re2
+                if subTerm != '' and subTerm is not None:
                     terms.append(subTerm)
         return terms
 
@@ -158,4 +161,6 @@ class Tagger(object):
 #if __name__ == "__main__":
 #    t = u'Enter your email address:\n\nDelivered by FeedBurner\nLock On Flaming Cliffs 2 PC -SKIDROW is available on a new fast direct download service with over 2,210,000 Files to choose from.Download anything with more then 1000+ Kb/s downloading speed.Signup process takes just 10 sec to go.Signup today and enjoy the speed !\n-------------------- Similar Software to (Lock On Flaming Cliffs 2 PC -SKIDROW): History Channel Battle For The PacificThe Scourge Project Episode 1 and 2 Update 2-SKIDROWStorm Over the Pacific v1.02 Update-SKIDROWTom Clancys Splinter Cell Conviction v1.03 Update-SKIDROWThe Witcher - Enhanced Edition ISO'
 #    tok = Tagger()
-#    tok.tokenize(t)
+#    print tok.tokenize(t)
+#    tok.initialize()
+#    tok.tag(tok.tokenize(t))

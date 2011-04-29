@@ -2,6 +2,7 @@ CHANGES.txt
 README.txt
 bootstrap.py
 buildout.cfg
+setup.cfg
 setup.py
 src/topia/__init__.py
 src/topia.termextract.egg-info/PKG-INFO
