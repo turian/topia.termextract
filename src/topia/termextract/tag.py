@@ -25,6 +25,10 @@ from topia.termextract import interfaces
 # Modified by jpt
 # regex [^\W\d_] = [a-zA-Z] with Unicode alphabetic character.
 # See: http://stackoverflow.com/questions/2039140/python-re-how-do-i-match-an-alpha-character/2039476#2039476
+# However, we first use the original TERM_SPEC, because the newer one
+# can take exponential time, e.g. on '------------------------------'
+# (see Python bug http://bugs.python.org/issue1662581)
+ORIG_TERM_SPEC = re.compile('([^a-zA-Z]*)([a-zA-Z-\.]*[a-zA-Z])([^a-zA-Z]*[a-zA-Z]*)')
 TERM_SPEC = re.compile('([\W\d_]*)(([^\W\d_]*[-\.]*)*[^\W\d_])([\W\d_]*[^\W\d_]*)', re.UNICODE)
 DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), 'data')
 
@@ -112,13 +116,17 @@ class Tagger(object):
         """See interfaces.ITagger"""
         terms = []
         for term in re.split('\s', text):
+            print term
             # If the term is empty, skip it, since we probably just have
             # multiple whitespace cahracters.
             if term == '':
                 continue
             # Now, a word can be preceded or succeeded by symbols, so let's
             # split those out
-            match = TERM_SPEC.search(term)
+            # Modified by jpt
+            match = ORIG_TERM_SPEC.search(term)
+            if match is None:
+                match = TERM_SPEC.search(term)
             if match is None:
                 terms.append(term)
                 continue
@@ -149,3 +157,8 @@ class Tagger(object):
 
     def __repr__(self):
         return '<%s for %s>' %(self.__class__.__name__, self.language)
+
+#if __name__ == "__main__":
+#    t = u'Enter your email address:\n\nDelivered by FeedBurner\nLock On Flaming Cliffs 2 PC -SKIDROW is available on a new fast direct download service with over 2,210,000 Files to choose from.Download anything with more then 1000+ Kb/s downloading speed.Signup process takes just 10 sec to go.Signup today and enjoy the speed !\n--- Similar Software to (Lock On Flaming Cliffs 2 PC -SKIDROW): History Channel Battle For The PacificThe Scourge Project Episode 1 and 2 Update 2-SKIDROWStorm Over the Pacific v1.02 Update-SKIDROWTom Clancys Splinter Cell Conviction v1.03 Update-SKIDROWThe Witcher - Enhanced Edition ISO'
+#    tok = Tagger()
+#    tok.tokenize(t)
