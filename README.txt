@@ -8,3 +8,7 @@ CONTRIBUTIONS:
     I changed TERM_SPEC in topic.termextract.tag:
         Old = [u'S', u'\xe3o', u'Paulo', u'was', u'home', u'to']
         New = [u'S\xe3o', u'Paulo', u'was', u'home', u'to']
+    * extractor.extract() now has a parameter KEEP_ORIGINAL_SPACING=True,
+    which allows you to keep the original spacing of the term:
+        Old = [u'Mr . Smith']
+        New = [u'Mr. Smith']

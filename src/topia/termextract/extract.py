@@ -35,8 +35,8 @@ class DefaultFilter(object):
         return ((strength == 1 and occur >= self.singleStrengthMinOccur) or
                 (strength >= self.noLimitStrength))
 
-def _add(term, norm, multiterm, terms):
-    multiterm.append((term, norm))
+def _add(term, norm, split, multiterm, terms):
+    multiterm.append((term, norm, split))
     terms.setdefault(norm, 0)
     terms[norm] += 1
 
@@ -52,27 +52,39 @@ class TermExtractor(object):
             filter = DefaultFilter()
         self.filter = filter
 
-    def extract(self, taggedTerms):
+    def extract(self, taggedTerms, splits, KEEP_ORIGINAL_SPACING):
         """See interfaces.ITermExtractor"""
         terms = {}
         # Phase 1: A little state machine is used to build simple and
         # composite terms.
         multiterm = []
         state = SEARCH
+        assert len(taggedTerms) == len(splits)
         while taggedTerms:
             term, tag, norm = taggedTerms.pop(0)
+            split = splits.pop(0)
             if state == SEARCH and tag.startswith('N'):
                 state = NOUN
-                _add(term, norm, multiterm, terms)
+                _add(term, norm, split, multiterm, terms)
             elif state == SEARCH and tag == 'JJ' and term[0].isupper():
                 state = NOUN
-                _add(term, norm, multiterm, terms)
+                _add(term, norm, split, multiterm, terms)
             elif state == NOUN and tag.startswith('N'):
-                _add(term, norm, multiterm, terms)
+                _add(term, norm, split, multiterm, terms)
             elif state == NOUN and not tag.startswith('N'):
                 state = SEARCH
                 if len(multiterm) > 1:
-                    word = ' '.join([word for word, norm in multiterm])
+                    if KEEP_ORIGINAL_SPACING:
+                        wholeword = ""
+                        for i in range(len(multiterm)):
+                            word, norm, split = multiterm[i]
+                            wholeword += word
+                            if split and i != len(multiterm)-1: wholeword += " "
+                        word = wholeword
+#                        if word != ' '.join([w for w, norm, split in multiterm]): print repr(word), repr(' '.join([w for w, norm, split in multiterm]))
+#                        if word != ' '.join([w for w, norm, split in multiterm]): print "%40s %40s" % (word.encode("utf-8"), (' '.join([w for w, norm, split in multiterm])).encode("utf-8"))
+                    else:
+                        word = ' '.join([word for word, norm in multiterm])
                     terms.setdefault(word, 0)
                     terms[word] += 1
                 multiterm = []
@@ -83,10 +95,10 @@ class TermExtractor(object):
             for word, occur in terms.items()
             if self.filter(word, occur, len(word.split()))]
 
-    def __call__(self, text):
+    def __call__(self, text, KEEP_ORIGINAL_SPACING=True):
         """See interfaces.ITermExtractor"""
-        terms = self.tagger(text)
-        return self.extract(terms)
+        split, terms = self.tagger(text)
+        return self.extract(terms, split, KEEP_ORIGINAL_SPACING)
 
     def __repr__(self):
         return '<%s using %r>' %(self.__class__.__name__, self.tagger)
