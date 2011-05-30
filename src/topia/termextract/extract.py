@@ -69,9 +69,11 @@ class TermExtractor(object):
             filter = DefaultFilter()
         self.filter = filter
 
-    def extract(self, taggedTerms, splits, KEEP_ORIGINAL_SPACING):
+    def extract(self, taggedTerms, splits, KEEP_ORIGINAL_SPACING, RETURN_BIO=False):
         """See interfaces.ITermExtractor"""
+        """ Warning: This is desctructive to taggedTerms + splits (has side effects) """
         terms = {}
+        bio_encoding = []
         # Phase 1: A little state machine is used to build simple and
         # composite terms.
         multiterm = []
@@ -83,20 +85,27 @@ class TermExtractor(object):
             if state == SEARCH and tag.startswith('N'):
                 state = NOUN
                 _add(term, norm, split, multiterm, terms)
+                bio_encoding.append("B")
             elif state == SEARCH and tag == 'JJ' and term[0].isupper():
                 state = NOUN
                 _add(term, norm, split, multiterm, terms)
+                bio_encoding.append("I")
             elif state == NOUN and tag.startswith('N'):
                 _add(term, norm, split, multiterm, terms)
+                bio_encoding.append("I")
             elif state == NOUN and not tag.startswith('N'):
                 state = SEARCH
                 if len(multiterm) > 1:
                     _keepterm(multiterm, terms, KEEP_ORIGINAL_SPACING)
                 multiterm = []
+                bio_encoding.append("O")
+            else:
+                bio_encoding.append("O")
         # Potentially keep the last term, if there is one. -jpt
         if len(multiterm) > 1:
             _keepterm(multiterm, terms, KEEP_ORIGINAL_SPACING)
         multiterm = []
+        if RETURN_BIO: return bio_encoding
         # Phase 2: Only select the terms that fulfill the filter criteria.
         # Also create the term strength.
         return [

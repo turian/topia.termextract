@@ -7,6 +7,7 @@ setup.py
 src/topia/__init__.py
 src/topia.termextract.egg-info/PKG-INFO
 src/topia.termextract.egg-info/SOURCES.txt
+src/topia.termextract.egg-info/SOURCES.txt.orig
 src/topia.termextract.egg-info/dependency_links.txt
 src/topia.termextract.egg-info/namespace_packages.txt
 src/topia.termextract.egg-info/not-zip-safe
@@ -19,4 +20,5 @@ src/topia/termextract/extract.py
 src/topia/termextract/interfaces.py
 src/topia/termextract/tag.py
 src/topia/termextract/tests.py
+src/topia/termextract/timeout.py
 src/topia/termextract/data/english-lexicon.txt
