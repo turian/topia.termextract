@@ -42,6 +42,21 @@ def _add(term, norm, split, multiterm, terms):
 #    terms.setdefault(norm, 0)
 #    terms[norm] += 1
 
+def _keepterm(multiterm, terms, KEEP_ORIGINAL_SPACING):
+    if KEEP_ORIGINAL_SPACING:
+        wholeword = ""
+        for i in range(len(multiterm)):
+            word, norm, split = multiterm[i]
+            wholeword += word
+            if split and i != len(multiterm)-1: wholeword += " "
+        word = wholeword
+#        if word != ' '.join([w for w, norm, split in multiterm]): print repr(word), repr(' '.join([w for w, norm, split in multiterm]))
+#        if word != ' '.join([w for w, norm, split in multiterm]): print "%40s %40s" % (word.encode("utf-8"), (' '.join([w for w, norm, split in multiterm])).encode("utf-8"))
+    else:
+        word = ' '.join([word for word, norm, split in multiterm])
+    terms.setdefault(word, 0)
+    terms[word] += 1
+
 class TermExtractor(object):
     zope.interface.implements(interfaces.ITermExtractor)
 
@@ -76,20 +91,12 @@ class TermExtractor(object):
             elif state == NOUN and not tag.startswith('N'):
                 state = SEARCH
                 if len(multiterm) > 1:
-                    if KEEP_ORIGINAL_SPACING:
-                        wholeword = ""
-                        for i in range(len(multiterm)):
-                            word, norm, split = multiterm[i]
-                            wholeword += word
-                            if split and i != len(multiterm)-1: wholeword += " "
-                        word = wholeword
-#                        if word != ' '.join([w for w, norm, split in multiterm]): print repr(word), repr(' '.join([w for w, norm, split in multiterm]))
-#                        if word != ' '.join([w for w, norm, split in multiterm]): print "%40s %40s" % (word.encode("utf-8"), (' '.join([w for w, norm, split in multiterm])).encode("utf-8"))
-                    else:
-                        word = ' '.join([word for word, norm in multiterm])
-                    terms.setdefault(word, 0)
-                    terms[word] += 1
+                    _keepterm(multiterm, terms, KEEP_ORIGINAL_SPACING)
                 multiterm = []
+        # Potentially keep the last term, if there is one. -jpt
+        if len(multiterm) > 1:
+            _keepterm(multiterm, terms, KEEP_ORIGINAL_SPACING)
+        multiterm = []
         # Phase 2: Only select the terms that fulfill the filter criteria.
         # Also create the term strength.
         return [

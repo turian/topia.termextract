@@ -12,3 +12,7 @@ CONTRIBUTIONS:
     which allows you to keep the original spacing of the term:
         Old = [u'Mr . Smith']
         New = [u'Mr. Smith']
+    * Fixed a bug where a term wouldn't be found if it was literally
+    the last token of the sentence.
+    * Fixed a bug (?) where unigram terms were included even if their
+    tokens were part of a multiterm.
