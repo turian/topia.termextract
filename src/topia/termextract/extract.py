@@ -37,8 +37,10 @@ class DefaultFilter(object):
 
 def _add(term, norm, split, multiterm, terms):
     multiterm.append((term, norm, split))
-    terms.setdefault(norm, 0)
-    terms[norm] += 1
+    # This was originally in the code, but we don't want unigram terms
+    # if we keep the multiterms -jpt
+#    terms.setdefault(norm, 0)
+#    terms[norm] += 1
 
 class TermExtractor(object):
     zope.interface.implements(interfaces.ITermExtractor)
