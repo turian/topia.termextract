@@ -95,14 +95,14 @@ class TermExtractor(object):
                 bio_encoding.append("I")
             elif state == NOUN and not tag.startswith('N'):
                 state = SEARCH
-                if len(multiterm) > 1:
+                if len(multiterm) > 0:
                     _keepterm(multiterm, terms, KEEP_ORIGINAL_SPACING)
                 multiterm = []
                 bio_encoding.append("O")
             else:
                 bio_encoding.append("O")
         # Potentially keep the last term, if there is one. -jpt
-        if len(multiterm) > 1:
+        if len(multiterm) > 0:
             _keepterm(multiterm, terms, KEEP_ORIGINAL_SPACING)
         multiterm = []
         if RETURN_BIO: return bio_encoding
