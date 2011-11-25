@@ -7,7 +7,6 @@ setup.py
 src/topia/__init__.py
 src/topia.termextract.egg-info/PKG-INFO
 src/topia.termextract.egg-info/SOURCES.txt
-src/topia.termextract.egg-info/SOURCES.txt.orig
 src/topia.termextract.egg-info/dependency_links.txt
 src/topia.termextract.egg-info/namespace_packages.txt
 src/topia.termextract.egg-info/not-zip-safe
